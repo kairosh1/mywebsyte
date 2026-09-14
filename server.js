@@ -1,0 +1,11 @@
+const express=require('express'),fs=require('fs'),path=require('path');
+const app=express(),PORT=process.env.PORT||3000,FILE=path.join(__dirname,'data','invitations.json');
+app.use(express.json());app.use(express.static(path.join(__dirname,'public')));
+const read=()=>JSON.parse(fs.readFileSync(FILE,'utf8')); const write=x=>fs.writeFileSync(FILE,JSON.stringify(x,null,2));
+const uid=()=>Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4);
+app.post('/api/invitations',(req,res)=>{const {yourName,herName,message,places,dates,times}=req.body;if(!yourName||!herName||!places?.length||!dates?.length||!times?.length)return res.status(400).json({error:'Заполни имена и варианты места, даты и времени.'});const x={id:uid(),yourName,herName,message,places,dates,times,answer:null,createdAt:new Date().toISOString()};const d=read();d.push(x);write(d);res.json({invitation:x,link:'/invite/'+x.id});});
+app.get('/api/invitations',(req,res)=>res.json(read()));
+app.get('/api/invitations/:id',(req,res)=>{const x=read().find(x=>x.id===req.params.id);x?res.json(x):res.status(404).json({error:'Приглашение не найдено'});});
+app.post('/api/invitations/:id/answer',(req,res)=>{const d=read(),x=d.find(x=>x.id===req.params.id);if(!x)return res.status(404).json({error:'Не найдено'});x.answer={...req.body,answeredAt:new Date().toISOString()};write(d);res.json({ok:true});});
+app.get('/invite/:id',(req,res)=>res.sendFile(path.join(__dirname,'public','invite.html')));
+app.listen(PORT,()=>console.log('Открой http://localhost:'+PORT+' и /admin.html'));
